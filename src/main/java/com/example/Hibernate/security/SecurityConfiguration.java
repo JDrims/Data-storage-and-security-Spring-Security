@@ -1,10 +1,8 @@
 package com.example.Hibernate.security;
 
-import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
@@ -19,30 +17,38 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true, jsr250Enabled = true)
 public class SecurityConfiguration {
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("admin"))
-                .roles("ADMIN")
+        UserDetails user1 = User.builder()
+                .username("user1")
+                .password(passwordEncoder.encode("password1"))
+                .roles("READ")
                 .build();
-        UserDetails user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("user"))
-                .roles("USER")
+        UserDetails user2 = User.builder()
+                .username("user2")
+                .password(passwordEncoder.encode("password2"))
+                .roles("WRITE")
                 .build();
-        return new InMemoryUserDetailsManager(admin, user);
+        UserDetails user3 = User.builder()
+                .username("user3")
+                .password(passwordEncoder.encode("password3"))
+                .roles("DELETE")
+                .build();
+        return new InMemoryUserDetailsManager(user1, user2, user3);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/persons/by-city").permitAll()
-                        .requestMatchers("persons/by-age").hasRole("ADMIN")
-                        .requestMatchers("persons/by-name&surname").hasRole("USER")
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/read").hasRole("READ")
+                        .requestMatchers("/write").hasRole("WRITE")
+                        .requestMatchers("/delete").hasRole("DELETE")
+                        .requestMatchers("/welcome").permitAll()
+                        .anyRequest().authenticated()
+                )
                 .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
                 .build();
     }
